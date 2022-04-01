@@ -145,8 +145,8 @@ col_stimRT = find(strcmp(Tmri.Properties.VariableNames,'stimRT'));
 col_normRT = find(strcmp(Tmri.Properties.VariableNames,'normRT'));
 
 % change here between 'conflict' and 'accuracy' conditions
-trials = ( T.type=='incon') & T.stimACC==1  & T.badep==1 ; 
-% trials = T.type=='incon'  & T.stimRT~=0 & T.badep==1; T.type=='con' |
+trials = ( T.type=='con' | T.type=='incon') & T.stimACC==1  & T.badep==1 ; 
+% trials = T.type=='incon'  & T.stimRT~=0 & T.badep==1;
 
 Tmri = Tmri(trials,:);
 Tmri.type   = removecats(Tmri.type);
@@ -167,8 +167,8 @@ end
 %%
 % calculate correlation maps - time consuming
 tic
-%'SMA','area8',,'area10','AIC','PIC'
-ic_names = {'preSMA','ACC','area9'};
+% 'SMA', 'preSMA','area8',,'area10','AIC','PIC'
+ic_names = {'area9','ACC'};
 ltyp = 2;
 
 estim = nan(num_frex,length(time(ltyp).t),length(ic_names)); %
@@ -201,7 +201,7 @@ set( hFig, 'units','normalized','outerposition',[0.3 0.5 0.3 0.5]);
 timlim = [time(ltyp).t(1) time(ltyp).t(end)];
 
 for es = 1:length(ic_names)
-    subplot(2,2,es)
+    subplot(1,2,es)
     
     pcor = fdr_bh(squeeze(pval(:,:,es)),0.1); 
     
