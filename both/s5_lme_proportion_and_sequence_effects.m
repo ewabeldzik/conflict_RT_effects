@@ -10,6 +10,12 @@
 clear; clc
 
 load('E:\SEF2\beh\beh_sef.mat');
+
+a = T.before=='blank';
+b = a;
+b(1:2)=[];
+b(end+2) = false;
+T.before(a) = T.type(b);
 load('E:\SEF2\eeg\matfiles\ic_mf_stim.mat')
 
 %%% EEG time-frequncy analysis
@@ -132,7 +138,7 @@ end
 %% Prepare variable 'brain' with all brain measures of interest
 
 brainVars = {'theta' 'ACC' 'preSMA'};
-brain =[];
+brain = [];
 
 for sb = sb_in     
     
@@ -173,7 +179,7 @@ for bvar = 1:length(brainVars)
         end
     
         %%% run LMM with behavioral variables
-        lme = fitlme(Tx, strcat(brainVars{bvar}, '~ type + normRT + (1|Block) + (1|isicat) + (1|Subject)')); %
+        lme = fitlme(Tx, strcat(brainVars{bvar}, '~ type + normRT + (1 + type + normRT |Subject)')); %
     
         % read LMM results     
         brain(bvar).pval(:,tp)  = lme.Coefficients(:,6).pValue;
@@ -269,7 +275,7 @@ end
 wid = 0.25;
 
 %%% run LMM on RTs
-lme = fitlme(Tx, 'stimRT ~  freq*type + (1|Block) + (1|isicat) + (1|Subject)'); %
+lme = fitlme(Tx, 'stimRT ~  freq*type +  (1 + freq*type |Subject)'); %
 FixEff = size(lme.Coefficients,1);
 
 % read LMM results     
@@ -307,7 +313,7 @@ ylim([min(lowCI)*1.5 max(upCI)*1.1])
 for bvar = 1:length(brainVars)
 
     
-    lme = fitlme(Tx, strcat(brainVars{bvar}, '~  freq*type + normRT + (1|Block) + (1|isicat) + (1|Subject)')); %
+    lme = fitlme(Tx, strcat(brainVars{bvar}, '~  freq*type + normRT + (1 + freq*type + normRT|Subject)')); %
     FixEff = size(lme.Coefficients,1);
 
     % read LMM results     
@@ -345,7 +351,7 @@ end
 %% plot the 3rd column - congruency sequence effect
 
 %%% run LMM on RTs
-lme = fitlme(Tx, 'stimRT ~ before*type + (1|Block) + (1|isicat) + (1|Subject)'); %
+lme = fitlme(Tx, 'stimRT ~ before*type +  (1 + before*type |Subject)'); %
 FixEff = size(lme.Coefficients,1);
 
 % read LMM results     
@@ -382,7 +388,7 @@ ylim([min(lowCI)*2 max(upCI)*1.1])
 for bvar=1:length(brainVars)
 
     
-    lme = fitlme(Tx, strcat(brainVars{bvar}, '~ before*type + normRT + (1|Block) + (1|isicat) + (1|Subject)')); %
+    lme = fitlme(Tx, strcat(brainVars{bvar}, '~ before*type + normRT +  (1 + before*type + normRT |Subject)')); %
     FixEff = size(lme.Coefficients,1);
 
     % read LMM results     
