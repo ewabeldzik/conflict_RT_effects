@@ -10,12 +10,6 @@
 clear; clc
 
 load('E:\SEF2\beh\beh_sef.mat');
-
-a = T.before=='blank';
-b = a;
-b(1:2)=[];
-b(end+2) = false;
-T.before(a) = T.type(b);
 load('E:\SEF2\eeg\matfiles\ic_mf_stim.mat')
 
 %%% EEG time-frequncy analysis
@@ -147,9 +141,8 @@ for sb = sb_in
     brain(3).tc(sb,:,:) = squeeze(hdr(T.Subject==sb,:,find(ismember(labels(ic_list),'preSMA'))))';
 
 end
-
-
-%% Run LME analyses for RT effect
+%% Run LME analyses for calculating FDR-corrected Alpha Val for each brain variable
+AlphaVal = [];
 for bvar = 1:length(brainVars) 
 
     if bvar == 1; time2plot = timeEEG; else time2plot = timeBOLD; end
@@ -180,16 +173,60 @@ for bvar = 1:length(brainVars)
     
         %%% run LMM with behavioral variables
         lme = fitlme(Tx, strcat(brainVars{bvar}, '~ type + normRT + (1 + type + normRT |Subject)')); %
+        
+
+        % read LMM results     
+        pval(:,tp)  = lme.Coefficients(:,6).pValue;      
+
+    end
+
+    [~, ~, CI] = fdr_bh(pval(2:3,:));
+    AlphaVal(bvar) = 1-CI;
+   
+end
+
+%% Reun LME analyses for FDR-corrected CI
+for bvar = 1:length(brainVars) 
+
+    if bvar == 1; time2plot = timeEEG; else time2plot = timeBOLD; end
+    for tp = 2:length(time2plot)
+
+        % extract brain value at each time point (tp)
+        brainVal = nan(height(T),1);
+        for sb = sb_in
+            brainVal(T.Subject==sb)  = squeeze(brain(bvar).tc(sb,tp,:));    
+        end
     
+        % create new table with correct trials only
+        Tall = [T array2table(brainVal,'VariableNames',brainVars(bvar))]; 
+        Tx = Tall((Tall.type=='con' | Tall.type=='incon') & (Tall.before=='con' | Tall.before=='incon') & ...
+                   Tall.accur=='hit'  & Tall.badep==1 & Tall.Trial>1 & Tall.stimRT~=0,:); 
+        
+        Tx.type   = removecats(Tx.type);
+        Tx.isicat = removecats(Tx.isicat);
+        col1      = find(strcmp(Tx.Properties.VariableNames,'theta'));
+        
+        % zscore for each subject
+        for sb=sb_in            
+            Tx.normRT(Tx.Subject==sb) = zscore(Tx.stimRT(Tx.Subject==sb));
+            for col = col1:col1 + width(Tall) - width(T) -1
+                 Tx{Tx.Subject==sb,col} = zscore(Tx{Tx.Subject==sb,col});
+            end   
+        end
+    
+        %%% run LMM with behavioral variables
+        lme = fitlme(Tx, strcat(brainVars{bvar}, '~ type + normRT + (1 + type + normRT |Subject)')); %
+        CIcor = coefCI(lme,'Alpha',AlphaVal(bvar));
+
         % read LMM results     
         brain(bvar).pval(:,tp)  = lme.Coefficients(:,6).pValue;
         brain(bvar).estim(:,tp) = lme.Coefficients(:,2).Estimate;
-        brain(bvar).upCI(:,tp)  = lme.Coefficients(:,8).Upper;
-        brain(bvar).lowCI(:,tp) = lme.Coefficients(:,7).Lower;
+        brain(bvar).upCI(:,tp)  = CIcor(:,2); 
+        brain(bvar).lowCI(:,tp) = CIcor(:,1);
         
 
     end
-    
+   
 end
 [~,ConIdx] = ismember('type_incon',lme.CoefficientNames);
 
